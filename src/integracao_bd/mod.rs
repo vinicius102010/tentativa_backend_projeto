@@ -1,3 +1,6 @@
+#![allow(unused_variables)]
+#![allow(unreachable_code)]
+
 use mysql::*;
 use mysql::prelude::*;
 use rand::RngCore;
@@ -70,8 +73,9 @@ pub fn criar_usuario() -> bool{
     } else{
         return false
     };
-    return resultado
+    resultado
 }
+
 pub fn consulta_bd(){
         // Configura a URL de conexão com o banco de dados
         let url = "mysql://myadmin:357159Vinic@meuserverdemo-mysql.mysql.database.azure.com:3306/projeto_rust";
@@ -80,21 +84,21 @@ pub fn consulta_bd(){
         //obtém uma conexão
         let mut conn = pool.get_conn().expect("Erro ao obter conexão do pool");
 
-    let selected_rows: Vec<(Vec<u8>, String, String, String, String)> = conn.query(
+    let lista_linhas: Vec<(Vec<u8>, String, String, String, String)> = conn.query(
         "SELECT chave_criptografia, usuario, email, senha, nome FROM usuarios"
     ).expect("Erro ao consultar dados do banco de dados");
 
     // Exibe todos os dados armazenados
-    for row in selected_rows {
-        println!("ID: {:?}", row.0);
-        println!("Chave: {:?}", row.1);
-        println!("Nonce: {:?}", row.2);
-        println!("Mensagem Criptografada: {:?}", row.3);
-        println!("Data de Criação: {}", row.4);
+    for linha in lista_linhas {
+        println!("Chave_criptografia:  {:?}", linha.0);
+        println!("Usuario: {:?}", linha.1);
+        println!("Email: {:?}", linha.2);
+        println!("Senha: {:?}", linha.3);
+        println!("Nome: {}", linha.4);
         println!();
     }
 }
-/*pub fn fazer_login() -> Vec<u8>{
+pub fn fazer_login() -> (bool, String, String){
     // Configura a URL de conexão com o banco de dados
     let url = "mysql://myadmin:357159Vinic@meuserverdemo-mysql.mysql.database.azure.com:3306/projeto_rust";
     // Cria uma pool de conexões
@@ -115,8 +119,16 @@ pub fn consulta_bd(){
     io::stdin().read_line(&mut senha).expect("Falha ao ler a senha");
     let senha = senha.trim();
 
-    let selected_rows: Vec<(Vec<u8>, String, String)> = conn.query(
+    let lista_linhas: Vec<(Vec<u8>, String, String)> = conn.query(
         "SELECT chave_criptografia, usuario, senha FROM usuarios"
     ).expect("Erro ao consultar dados do banco de dados");
 
-}*/
+    for linha in lista_linhas{
+        if linha.1 == nome_usuario as String && lista.2 == senha as String{
+            return(true, nome_usuario, senha);
+        }else{
+            return(false, nome_usuario, senha);
+        }
+    }
+
+}
