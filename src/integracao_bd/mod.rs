@@ -217,4 +217,151 @@ impl BancoDadosConn {
             println!();
         }
     }
+    pub fn alterar_senha(&self){
+        utilitarios::limpar_tela();
+        if self.chave_usuario_logado.is_none() {
+            println!("Você precisa fazer login primeiro.");
+            return;
+        }
+
+        let chave_usuario = self.chave_usuario_logado.as_ref().unwrap();
+        let mut conn = self.pool.get_conn().expect("Erro ao obter conexão do pool");
+
+        let lista_senhas: Vec<(String, String, Vec<u8>, Vec<u8>)> = conn.exec(
+            "SELECT url_site, usuario_site, nonce, senha_site FROM senhas WHERE chave_criptografia_usuario = :chave",
+            params! {
+                "chave" => chave_usuario,
+            }
+        ).expect("Erro ao consultar dados do banco de dados");
+        
+        println!("aqui esta uma lista com todas as suas senhas: ");
+        for (i,(url_site, usuario_site, nonce, senha_criptografada)) in lista_senhas.iter().enumerate() {
+            let chave: [u8; 32] = chave_usuario
+                .as_slice()
+                .try_into()
+                .expect("Chave de criptografia inválida");
+            let senha = decrypt(&chave, &nonce, &senha_criptografada);
+
+            println!("Site numero {}",i);
+            println!("Nome do Site: {}", url_site);
+            println!("Nome de Usuário do Site: {}", usuario_site);
+            println!(
+                "Senha: {}",
+                String::from_utf8(senha).expect("Senha inválida")
+            );
+            println!("=======================================================================");
+            println!();
+        }
+
+        println!("Selecione o número do site que deseja alterar a senha: ");
+        let mut escolha_site = String::new();
+        io::stdin().read_line(&mut escolha_site).expect("Erro ao ler entrada");
+        let escolha_site: usize = escolha_site.trim().parse().expect("Entrada inválida");
+
+        if escolha_site >= lista_senhas.len(){
+            println!("Opção invalida!");
+            return;
+        }
+
+        println!("Digite a nova senha: ");
+        let mut nova_senha = String::new();
+        io::stdin().read_line(&mut nova_senha).expect("Erro ao ler a nova senha");
+        let nova_senha = nova_senha.trim();
+
+        println!("Digite a nova senha novamente: ");
+        let mut nova_senha2 = String::new();
+        io::stdin().read_line(&mut nova_senha2).expect("Erro ao ler a nova senha");
+        let nova_senha2 = nova_senha2.trim();
+
+        if nova_senha != nova_senha2{
+            println!("As senhas nao coincidem.");
+            return;
+        }
+
+        let chave:[u8; 32] = chave_usuario.as_slice().try_into().expect("Chave de criptografia invalida.");
+        let(nonce, senha_criptografada) = encrypt(&chave, &nova_senha.as_bytes());
+
+        let (url_site, usuario_site, _, _) = &lista_senhas[escolha_site];
+
+        conn.exec_drop(
+            "UPDATE senhas SET senha_site = :nova_senha , nonce = :nonce WHERE url_site = :url AND usuario_site = :usuario AND chave_criptografia_usuario = :chave",
+            params! {
+                "nova_senha" => senha_criptografada,
+                "nonce" => nonce,
+                "url" => url_site,
+                "usuario" => usuario_site,
+                "chave" => chave_usuario,
+            }
+        ).expect("Erro ao atualizar a senha no banco de dados");
+    
+        println!("Senha alterada com sucesso!");
+    }
+    pub fn excluir_senha(&self){
+        utilitarios::limpar_tela();
+        if self.chave_usuario_logado.is_none() {
+            println!("Você precisa fazer login primeiro.");
+            return;
+        }
+
+        let chave_usuario = self.chave_usuario_logado.as_ref().unwrap();
+        let mut conn = self.pool.get_conn().expect("Erro ao obter conexão do pool");
+
+        let lista_senhas: Vec<(String, String, Vec<u8>, Vec<u8>)> = conn.exec(
+            "SELECT url_site, usuario_site, nonce, senha_site FROM senhas WHERE chave_criptografia_usuario = :chave",
+            params! {
+                "chave" => chave_usuario,
+            }
+        ).expect("Erro ao consultar dados do banco de dados");
+        
+        println!("aqui esta uma lista com todas as suas senhas: ");
+        for (i,(url_site, usuario_site, nonce, senha_criptografada)) in lista_senhas.iter().enumerate() {
+            let chave: [u8; 32] = chave_usuario
+                .as_slice()
+                .try_into()
+                .expect("Chave de criptografia inválida");
+            let senha = decrypt(&chave, &nonce, &senha_criptografada);
+
+            println!("Site numero {}",i);
+            println!("Nome do Site: {}", url_site);
+            println!("Nome de Usuário do Site: {}", usuario_site);
+            println!(
+                "Senha: {}",
+                String::from_utf8(senha).expect("Senha inválida")
+            );
+            println!("=======================================================================");
+            println!();
+        }
+        println!("Qual das senhas deseja excluir: ");
+        let mut escolha =String::new();
+        io::stdin().read_line(&mut escolha).expect("Nao foi possivel ler a entrada");
+        let escolha :usize = escolha.trim().parse().expect("Erro ao escolher a entrada");
+
+        if escolha >= lista_senhas.len(){
+            println!("entrada invalida");
+            return;
+        }
+
+        let chave:[u8; 32] = chave_usuario.as_slice().try_into().expect("Chave de criptografia invalida.");
+        let(url_site, usuario_site, nonce, senha_criptografada) = &lista_senhas[escolha];
+        println!("Certeza que deseja excluir as seguinte conta:");
+        println!("Site/url: {:?}", &url_site);
+        println!("Usuario: {:?}", &usuario_site);
+        println!("senha: {:?}", String::from_utf8(decrypt(&chave, &nonce, &senha_criptografada)).expect("Senha invalida"));
+        println!("Digite 'S' para sim e 'N' para não");
+        let mut certeza = String::new();
+        io::stdin().read_line(&mut certeza).expect("Nao foi possivel ler a entrada");
+        let certeza:char = certeza.trim().parse().expect("Erro na conversao");
+        if certeza !='S' && certeza !='s' && certeza != 'N' && certeza != 'n'{
+            println!("Opção invalida");
+            return;
+        }
+        if certeza == 'S' || certeza == 's'{
+            conn.exec_drop("DELETE FROM senhas WHERE chave_criptografia_usuario = :chave_usuario AND usuario_site = :usuario_site AND url_site = :url_site", 
+            params!{
+                "chave_usuario" =>chave_usuario,
+                "usuario_site" =>usuario_site,
+                "url_site" =>url_site,
+            }).expect("Erro ao excluir senha");
+        }
+    }
 }

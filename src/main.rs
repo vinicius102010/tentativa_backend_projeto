@@ -40,7 +40,9 @@ fn main() {
                         println!("Escolha uma opção:");
                         println!("1. Inserir senha");
                         println!("2. Consultar senhas");
-                        println!("3. Sair");
+                        println!("3. Alterar senha");
+                        println!("4. Excluir senha");
+                        println!("5. Sair");
                         let mut opcao2 = String::new();
                         std::io::stdin()
                             .read_line(&mut opcao2)
@@ -53,7 +55,9 @@ fn main() {
                                 conn_bd.consultar_senhas();
                                 utilitarios::esperar_enter()
                             }
-                            "3" => break,
+                            "3" => conn_bd.alterar_senha(),
+                            "4" => conn_bd.excluir_senha(),
+                            "5" => break,
                             _ => println!("Opção inválida!"),
                         }
                     }
